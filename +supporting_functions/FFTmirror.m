@@ -23,7 +23,7 @@ x = x(:);
 
 len = length(x);
 
-if iseven(len)
+if supporting_functions.iseven(len)
 	% Raw FFT spectrum is not symmetrical. Need to make it so after 'shift'.
 	yy = [x((len+2)/2:len); x(1:(len+2)/2)];		% This is the shift.
 
