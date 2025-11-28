@@ -101,12 +101,7 @@ fprintf('THD = %.4f (%.2f%%)\n', THD, THD*100);
 %     2. Plot the magnitude frequency response function of tf
 %     3. Compute response dc gain & bandwidth
 load("Q3components.mat"); % C1, C2, R, R1, R2, R3
-C1 = 1.5e-08;
-C2 = 1.7985e-08;
-R=10000;
-R1 = 1.3704e4;
-R2 = 1.3983e4;
-R3 = 1.3704e4;
+
 % Constants
 % Filter
 G_f = 50;               % Gain
@@ -127,6 +122,7 @@ Z_R2 = R2;
 Z_R3 = R3;
 Z_C1 = 1/(s*C1);        % Capacitors
 Z_C2 = 1/(s*C2);
+Z_R = R;
 
 % Unknowns: Node voltages V1, V2, VO
 % Inputs: vn (noise source at op amp input)
@@ -135,10 +131,12 @@ Z_C2 = 1/(s*C2);
 %   Node 2: -V1/R2 + V2/R2 + V2/R3 + V2/Z_C2 - VO/R3 = vn*A(s)
 %   Node 3: -V2/R3 + VO/R3 = 0
 
+
 % Set up the system of equations
 A = [ (1/Z_R1 + 1/Z_R2 + 1/Z_C1), -1/Z_R2, 0;
-      -1/Z_R2, (1/Z_R2 + 1/Z_R3 + 1/Z_C2), -1/Z_R3;
-      0, -1/Z_R3, 1/Z_R3 ];
+      -1/Z_R2, (1/Z_R2+ 1/Z_R3 + 1/Z_C2), -1;
+      0, -1/Z_R3, 1 ];
+
 b = [0; opamp_tf; 0];
 
 % Solve for unknowns
@@ -160,14 +158,19 @@ title('Magnitude Response of G(s)');
 
 % DC gain
 dc_gain = abs(evalfr(G, 0));
-fprintf('DC Gain = %.2f\n', dc_gain);
+dc_gain_db = 20*log10(dc_gain);
+fprintf('\nDC Gain = %.2f (%.2f dB)\n', dc_gain, dc_gain_db);
+
 
 % Bandwidth: find frequency where magnitude drops by 3 dB
 [mag,~,w] = bode(G);
 mag_db = 20*log10(squeeze(mag));
 bw_idx = find(mag_db <= (mag_db(1)-3), 1);
-bw = w(bw_idx)/(2*pi);
-fprintf('Bandwidth = %.2f Hz\n', bw);
+if ~isempty(bw_idx)
+    bw = w(bw_idx)/(2*pi);
+    fprintf('Bandwidth = %.2f Hz\n', bw);
+end
+%fprintf('Bandwidth = %.2f Hz\n', bw);
 
 % (b) Maximum vn for total SNR = (ADC SNR - 4db)
 % Signal power full scale sine wave
@@ -188,7 +191,7 @@ SNRtotal_l = 10^(SNRtotal/10);
 w = logspace(0,6,10000); % max 1 MHz
 Gjw = freqresp(G,w);
 Gjw_mag = abs(squeeze(Gjw));
-K = trapz(w,Gjw_mag.^2)/(2*pi); % int. in (rads/s), division by 2pi (Hz) 
+K = trapz(w,Gjw_mag.^2)/(4*pi^2); % int. in (rads/s), division by 2pi (Hz) 
 
 % Solve for vn
 vn = sqrt((Psignal/SNRtotal_l - Padc)/K);
